@@ -10,10 +10,12 @@ In total, 75 people from 62 German research institutions participated in the use
 
 ## Detailed Results
 
-To check out the detailed results, you can just click on the Binder button at the top of this readme file. This will open
+To check out the detailed results, you can just click on the Binder button below. This will open
 an interactive Jupyter Notebook where you can explore the data in more detail. We have provided the code for you to run the descriptive
 analysis but you can also explore the data yourself!
 
+[![Run Notebook](https://nfdi-jupyter.de/images/nfdi_badge.svg)](https://hub.nfdi-jupyter.de/r2d/gh/gesiscss/Jupyter4NFDI_survey_results)
+
 ## Contact
 
-For any questions, feedback, or comments, please contact the Jupyter4NFDI consortium [here](jupyter4nfdi@lists.nfdi.de)
+For any questions, feedback, or comments, please contact the Jupyter4NFDI consortium [here](mailto:jupyter4nfdi@lists.nfdi.de)
