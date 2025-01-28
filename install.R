@@ -14,4 +14,4 @@ install.packages(c("xlsx",
                    "IRkernel"))
 
 # register kernel
-IRkernel::installspec(user = FALSE)
+IRkernel::installspec() 
