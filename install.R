@@ -1,5 +1,6 @@
 # install packages
-install.packages(c("xlsx",
+install.packages(c("rJava",
+                   "xlsx",
                    "ggplot2",
                    "finalfit",
                    "leaflet",
