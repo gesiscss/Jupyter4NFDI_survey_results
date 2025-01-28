@@ -9,4 +9,5 @@ install.packages(c("xlsx",
                    "qdapRegex",
                    "knitr",
                    "htmltools",
-                   "dotenv"))
+                   "dotenv",
+                   "IRkernel"))
