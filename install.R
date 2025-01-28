@@ -1,3 +1,4 @@
+# install packages
 install.packages(c("xlsx",
                    "ggplot2",
                    "finalfit",
@@ -11,3 +12,6 @@ install.packages(c("xlsx",
                    "htmltools",
                    "dotenv",
                    "IRkernel"))
+
+# register kernel
+IRkernel::installspec(user = FALSE)
