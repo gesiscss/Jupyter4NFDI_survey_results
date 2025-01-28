@@ -1,7 +1,5 @@
 # install packages
-install.packages(c("rJava",
-                   "xlsx",
-                   "ggplot2",
+install.packages(c("ggplot2",
                    "finalfit",
                    "leaflet",
                    "tidygeocoder",
