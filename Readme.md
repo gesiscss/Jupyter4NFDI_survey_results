@@ -19,6 +19,12 @@ analysis but you can also explore the data yourself!
 </a>
 
 
+## Licensing
+
+- The **data** in this repository is licensed under [CC0 1.0](LICENSE-data.txt), meaning it is in the public domain.
+- The **code** in this repository is licensed under the [MIT License](LICENSE-code.txt).
+
+
 ## Contact
 
 For any questions, feedback, or comments, please contact the Jupyter4NFDI consortium [here](mailto:jupyter4nfdi@lists.nfdi.de)
