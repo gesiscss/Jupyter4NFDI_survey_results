@@ -9,8 +9,4 @@ install.packages(c("ggplot2",
                    "qdapRegex",
                    "knitr",
                    "htmltools",
-                   "dotenv",
-                   "IRkernel"))
-
-# register kernel
-IRkernel::installspec() 
+                   "knitr"))
