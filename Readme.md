@@ -21,8 +21,8 @@ analysis but you can also explore the data yourself!
 
 ## Licensing
 
-- The **data** in this repository is licensed under [CC0 1.0](LICENSE-data.txt), meaning it is in the public domain.
-- The **code** in this repository is licensed under the [MIT License](LICENSE-code.txt).
+- The **data** in this repository is licensed under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt), meaning it is in the public domain.
+- The **code** in this repository is licensed under the [MIT License](https://choosealicense.com/licenses/mit/).
 
 
 ## Contact
