@@ -9,5 +9,6 @@ install.packages(c("ggplot2",
                    "qdapRegex",
                    "knitr",
                    "htmltools",
-                   "knitr"))
+                   "knitr",
+                   "networkD3"))
 #
