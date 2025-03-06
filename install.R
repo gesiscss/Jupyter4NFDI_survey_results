@@ -11,5 +11,5 @@ install.packages(c("ggplot2",
                    "htmltools",
                    "knitr",
                    "networkD3",
-                   "DiagrammR"))
+                   "DiagrammeR"))
 #
