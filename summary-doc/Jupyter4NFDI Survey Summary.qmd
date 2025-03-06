@@ -1,0 +1,1516 @@
+---
+title: "Jupyter4NFDI Survey Summary"
+author: "Julian Kohne"
+date: today
+format:
+  html:
+    theme: flatly      
+    toc: true          
+    code-fold: true
+    standalone: true     
+execute:
+  echo: false             
+---
+
+```{css, echo = FALSE}
+.justify {
+  text-align: justify !important
+}
+```
+
+```{r loading packages, results='hide', message=FALSE, warning=FALSE, echo=F}
+invisible(capture.output({
+# options
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.align = "center")
+
+# packages
+packages <- c("ggplot2", "finalfit", "leaflet", "tidygeocoder", 
+              "tidyr", "httr", "xml2", "qdapRegex", "knitr", "htmltools","dplyr","networkD3")
+
+invisible(
+  lapply(packages, function(pkg) {
+    suppressPackageStartupMessages(
+      suppressWarnings(
+        library(pkg, character.only = TRUE)
+      )
+    )
+  })
+)
+
+
+}))
+
+```
+
+```{r importing data, echo=F}
+#importing data
+data <- readRDS("data_cleaned.rds")
+```
+
+```{r, echo=F}
+# Set the path to your .lss file
+file_path <- "limesurvey_survey_882875.lss"
+
+# Read and strip namespaces for easier processing
+doc <- read_xml(file_path)
+doc_no_ns <- xml_ns_strip(doc)
+
+# --- Extract Question Information from <questions> ---
+q_rows <- xml_find_all(doc_no_ns, "//document/questions/rows/row")
+
+question_info <- data.frame(
+  qid = sapply(q_rows, function(row) xml_text(xml_find_first(row, "qid"))),
+  gid = sapply(q_rows, function(row) xml_text(xml_find_first(row, "gid"))),
+  title = sapply(q_rows, function(row) xml_text(xml_find_first(row, "title"))),
+  question_order = sapply(q_rows, function(row) xml_text(xml_find_first(row, "question_order"))),
+  relevance = sapply(q_rows, function(row) {
+    node <- xml_find_first(row, "relevance")
+    if (!is.na(node)) xml_text(node) else ""
+  }),
+  stringsAsFactors = FALSE
+)
+
+question_info$question_order <- as.numeric(question_info$question_order)
+
+# --- Extract Group Information from <groups> ---
+group_rows <- xml_find_all(doc_no_ns, "//document/groups/rows/row")
+
+group_info <- data.frame(
+  gid = sapply(group_rows, function(row) xml_text(xml_find_first(row, "gid"))),
+  group_title = sapply(group_rows, function(row) xml_text(xml_find_first(row, "group_name"))),
+  group_order = sapply(group_rows, function(row) xml_text(xml_find_first(row, "group_order"))),
+  randomization_group = sapply(group_rows, function(row) {
+    node <- xml_find_first(row, "randomization_group")
+    if (!is.na(node)) xml_text(node) else ""
+  }),
+  stringsAsFactors = FALSE
+)
+
+group_info$group_order <- as.numeric(group_info$group_order)
+
+#Merge Group Info into Question Info
+question_info <- left_join(question_info, group_info %>% select(gid, group_order), by = "gid")
+question_info <- question_info %>%
+  mutate(global_order = group_order * 1000 + question_order) %>%
+  arrange(global_order)
+
+# Extract Question Texts from <question_l10ns>
+# In LimeSurvey exports, the localized question texts are stored under <question_l10ns>
+ql10n_rows <- xml_find_all(doc_no_ns, "//document/question_l10ns/rows/row")
+
+question_text_df <- data.frame(
+  qid = sapply(ql10n_rows, function(row) xml_text(xml_find_first(row, "qid"))),
+  question_text = sapply(ql10n_rows, function(row) xml_text(xml_find_first(row, "question"))),
+  stringsAsFactors = FALSE
+)
+
+#Merge the Question Texts into question_info
+question_info <- left_join(question_info, question_text_df, by = "qid")
+
+# Helper function to strip HTML tags from a string
+clean_html <- function(html_str) {
+  if (html_str == "") return("")
+  # Wrap the HTML string in a container
+  doc <- read_html(paste0("<div>", html_str, "</div>"))
+  # Extract and return the plain text
+  xml_text(xml_find_first(doc, "//div"))
+}
+
+# Apply the clean_html function to each question_text
+question_info$question_text <- sapply(question_info$question_text, clean_html)
+
+```
+
+# Jupyter4NFDI Survey
+
+::: {.justify}
+The Jupyter4NFDI Survey was designed and conducted to gauge the current state of Jupyter usage within the NFDI consortia and to gather feedback on the Jupyter4NFDI project. In total, 75 people from 53 German research institutions participated in the user survey between Nov. 28th 2024 and Jan. 6th 2025. This report provides an overview of the survey results, with respect to the participants, their current usage of Jupyter, and their expectations from the Jupyter4NFDI project. The results contribute to developing the Jupyter4NFDI infrastructures in accordance with the requirements and expectations of the NFDI community. They will also enable the Jupyter4NFDI consortium to consolidate efforts and resources within the NFDI and, if applicable, outside collaborators.
+
+For any questions, feedback, or comments, please contact the Jupyter4NFDI consortium [here](mailto:jupyter4nfdi@lists.nfdi.de)
+
+To check out the detailed results, you can just click on the Binder button below. This will open
+an interactive Jupyter Notebook where you can explore the data in more detail. We have provided the code for you to run the descriptive
+analysis but you can also explore the data yourself!
+
+<a href="https://hub.nfdi-jupyter.de/r2d/gh/gesiscss/Jupyter4NFDI_survey_results" target="_blank">
+    <img src="https://nfdi-jupyter.de/images/nfdi_badge.svg" alt="Run Notebook">
+</a>
+
+:::
+
+----------------------------------------------------------------------------------------------------------------------
+
+## Questionnaire
+
+Below you can find a diagram that showcases the questions asked in the survey and the branching of the survey based on participants responses.
+
+```{mermaid}
+flowchart TD
+    A1[Name of your organisation?] --> A2[Which NFDI consortium are you connected to?]
+    A2[Which NFDI consortium are you connected to?] --> A3[Describe your role in the NFDI consortia]
+    A3[Describe your role in the NFDI consortia] --> A4[Do you already know Jupyter4NFDI?]
+    A4 --> A6[What do you expect from Jupyter4NFDI?]
+    A6 --> A7[Where, and how you are using Jupyter?]
+    A7 --> A8[Select the appropriate branch that describes your activity.]
+    A8 --> B4[Other]
+    B4 --> F1
+    A8 --> B1[User]
+    A8 --> B2[Representative/Manager]
+    A8 --> B3[Resource Provider]
+    B3 --> D1[Are you responsible for the operation/management of an infrastructure and/or service within the NFDI consortia?]
+    D1 --> D2[Does your institute/center have its own IaaS cloud/cluster?]
+    D2 -->|Yes| D3[On which basis do you run your cloud/cluster or shared resources?]
+    D2 -->|No| D4[Do you already operate a JupyterHub or similar service?]
+    D3 --> D4
+    D4 -->|JupyterHub| D6[Can you provide a link to this service?]
+    D4 -->|Similar Service| D5[Which similar service do you use instead?]
+    D6 --> D7[Which spawner do you use?]
+    D4 -->|No| D8[Are you willing to connect shared resources to the central JupyterHub?]
+    D5 --> D8
+    D7 --> D8
+    D8 --> |Yes| D11[How many shared resources would you offer - CPUs, RAM, GPUs, storage?]
+    D8 --> |No| G1
+    D14 --> G1
+    D8 --> |Only specified Users| D9[Which users would be eligible to use your resources?]
+    D9 --> D10[Can you specify these user group within the NFDI?]
+    D10 --> D12[Are there any specific policies attached to the usage? Please provide links, if available.]
+    D12 --> D13[What benefits do you expect from connecting your resources?]
+    D11 --> D12
+    B2 --> E1[Do you know about Jupyter?]
+    E1 --> E2[How large is the group which you represent? Please indicate the number of people.]
+    E2 --> E3[What benefits do you expect from a centralised NFDI Jupyter service for the group that you are representing?]
+    E3 --> E4[Do you have dedicated partners offering Jupyter services?]
+    E4 -->|Yes|E5[Can you say which institution and/or person is responsible for the operation?]
+    E4 -->|No|G1
+    E4 -->|I don't know|G1
+    B1 --> F1[For what purpose do you use Jupyter?]
+    F1 --> F2[How are you currently using Jupyter services?]
+    F2 -->|Yes| F3[Who's the provider of the JupyterHub?]
+    F2 --> F4[What are your resource requirements?]
+    F3 --> F4
+    F4 --> F5[What are your environment requirements?]
+    F5 --> F5b[Do you have any other resource or environment requirements?]
+    F5b --> F6[Do you require access to data outside of the notebook?]
+    F6 -->|Yes| F7[Do you need write access to shared data?]
+    F6 -->|No| F9
+    F6 -->|I don't know| F9
+    F7 --> F8[Which other external data sources do you need?]
+    F8 --> F9[Would you like to offer software or services through the platform?]
+    F9 -->|Yes| F10[Can you briefly elaborate which software or services you would offer via the platform?]
+    F9 -->|No| F11[Do you know about Binder?]
+    F10 --> F11
+    F11 --> F12[Do you need reproducibility from Git or data repo - binder-like functionality / FAIR digital objects]
+    F12 --> F13[Do you know about JupyterLite?]
+    F13 --> F14[Do you know about Google Colab?]
+    F14 --> F15[What advantages would you expect from using the Jupyter4NFDI service compared to the services mentioned before - Binder, JupyterLite, and Google Colab?]
+    F15 --> F16[What do you think might be missing in the Jupyter4NFDI service?]
+    F16 --> F17[One can run various backends behind a JupyterHub proxy. What other services would you be interested in?]
+    F17 --> G1[Can we contact you in the future if we have further questions or would like to send you more information?]
+    E5 --> G1
+    D13 --> G1
+    G1 -->|Yes|G2[What is your first name?]
+    G2 --> G3[What is your last name?]
+    G3 --> G4[What is your email address?]
+    G4--> G5[Would you be willing to participate in a user study?]
+    G5--> G6[Would you like to provide additional relevant information to the Jupyter4NFDI service team that was not asked in the survey?]
+    
+%% Styling Nodes with fill colors
+
+%% Nodes in #cce7f9: B1, B4, and F1 to F17
+style B1 fill:#cce7f9,stroke:#333,stroke-width:1px
+style B4 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F1 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F2 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F3 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F4 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F5 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F5b fill:#cce7f9,stroke:#333,stroke-width:1px
+style F6 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F7 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F8 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F9 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F10 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F11 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F12 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F13 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F14 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F15 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F16 fill:#cce7f9,stroke:#333,stroke-width:1px
+style F17 fill:#cce7f9,stroke:#333,stroke-width:1px
+
+%% Nodes in #ffe8c4: B2, E1, E2, E3, E4, E5
+style B2 fill:#ffe8c4,stroke:#333,stroke-width:1px
+style E1 fill:#ffe8c4,stroke:#333,stroke-width:1px
+style E2 fill:#ffe8c4,stroke:#333,stroke-width:1px
+style E3 fill:#ffe8c4,stroke:#333,stroke-width:1px
+style E4 fill:#ffe8c4,stroke:#333,stroke-width:1px
+style E5 fill:#ffe8c4,stroke:#333,stroke-width:1px
+
+%% Nodes in #ccecd8: B3, D1 to D13
+style B3 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D1 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D2 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D3 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D4 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D5 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D6 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D7 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D8 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D9 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D10 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D11 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D12 fill:#ccecd8,stroke:#333,stroke-width:1px
+style D13 fill:#ccecd8,stroke:#333,stroke-width:1px
+
+```
+
+## Participants
+
+```{r, echo = F,results='hide'}
+
+# n
+length(unique(data$id))
+
+# NFDI Consortia
+# Transform data to right format
+binary_columns <- data[,9:35]
+sapply(binary_columns, class)
+for (i in 1:dim(binary_columns)[2]) {
+  binary_columns[,i] <- as.factor(binary_columns[,i])
+}
+binary_columns <- sapply(binary_columns,as.numeric)
+binary_columns <- (binary_columns - 1)
+sums <- as.data.frame(colSums(binary_columns, na.rm = TRUE))
+colnames(sums) <- "Value"
+sums$Name <- rownames(sums)
+
+sums[order(sums$Value, decreasing = TRUE),]
+
+
+```
+
+In total, 75 people from 53 German research institutions participated in the user survey between Nov. 28th 2024 and Jan. 6th 2025. Participants institutions were mostly universities and research institutions all across Germany.
+
+![](./static_map.png)
+
+```{r,echo=F}
+inst_frame <- as.data.frame(unique(data$org_normalized[!is.na(data$org_normalized)]))
+colnames(inst_frame) <- "Institution"
+DT::datatable(inst_frame)
+```
+<br>
+
+In terms of NFDI consortia, survey participants came from `r length(unique(sums$Name))` different consortia but mostly from consortia with a focus on natural sciences and computational methods.
+
+```{r, echo = F}
+
+ggplot(sums, aes(x = reorder(Name, -Value), y = Value)) + 
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Bar Graph of NFDI Members",
+    subtitle = question_info$question_text[2],
+    x = "NFDI Member",
+    y = "Value"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.margin = margin(50, 50, 50, 50)
+  ) +
+  coord_cartesian(clip = "off")
+
+```
+
+Within their repsective consortia, participants fulfill various roles, but mostly management and leadership roles, followed by IT- and infrastructure development, and roles as researchers and scientists.
+
+```{r role-processing, results='hide', message=FALSE, warning=FALSE,echo=F}
+invisible(capture.output({
+data$`normalized role`[data$`normalized role` == FALSE] <- NA
+table(data$`normalized role`,useNA = "always")
+role_frame <- as.data.frame(table(data$`normalized role`,useNA = "always"))
+colnames(role_frame) <- c("Role","Count")
+role_frame <- role_frame[order(role_frame$Count,decreasing = T),]
+role_frame$Role <- factor(role_frame$Role, levels = role_frame$Role) 
+}))
+```
+
+```{r, fig.width = 15, fig.height = 12,echo=F}
+#| fig-align: center
+# Barplot
+ggplot(role_frame, aes(x = Role, y = Count)) + 
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  labs(
+    title = "Bar Graph of Roles",
+    subtitle = question_info$question_text[3],
+    x = "Role",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Interestingly, only about half of all participants already know Jupyter4NFDI, despite their backgrounds in quantitative research and computational methods and their membership in other NFDI consortia. 
+
+```{r knowing-jupyter-processing, echo = F,result='hide',}
+#table(data$know_jupyter4NFDI,useNA = "always")
+#prop.table(table(data$know_jupyter4NFDI,useNA = "always"))
+know_jupyter4NFDI_frame <- as.data.frame(table(data$know_jupyter4NFDI,useNA = "always"))
+colnames(know_jupyter4NFDI_frame) <- c("Knows","Count")
+know_jupyter4NFDI_frame <- know_jupyter4NFDI_frame[order(know_jupyter4NFDI_frame$Count,decreasing = T),]
+know_jupyter4NFDI_frame$Knows <- factor(know_jupyter4NFDI_frame$Knows, levels = know_jupyter4NFDI_frame$Knows)
+```
+
+```{r knowing-jupyter-plotting, fig.width = 15, fig.height = 12, echo = F}
+#| fig-align: center
+# Barplot
+ggplot(know_jupyter4NFDI_frame, aes(x = Knows, y = Count)) + 
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  labs(
+    title = "Bar Graph of knowing Jupyter4NFDI",
+    subtitle = question_info$question_text[4],
+    x = "Survey Answer",
+    y = "Count"
+  )
+
+```
+<br>
+
+In terms of expectations, participants were mostly interested in easy access, a single entry point and training.
+
+```{r expectations-processing, results='hide', message=FALSE, warning=FALSE,echo=F,resuls='hide'}
+invisible(capture.output({
+expect_frame <- data[,39:46]
+sapply(expect_frame, class)
+for (i in 1:dim(expect_frame)[2]) {
+  expect_frame[,i] <- as.factor(expect_frame[,i])
+}
+expect_frame <- sapply(expect_frame,as.numeric)
+expect_frame <- (expect_frame - 1)
+sums <- as.data.frame(colSums(expect_frame, na.rm = TRUE))
+colnames(sums) <- "Value"
+sums$Name <- rownames(sums)
+}))
+```
+
+```{r,echo=F}
+# Pivot the table to a wide format (to prevent long format)
+sums2 <- reshape(sums,
+                 idvar = "Value",
+                 timevar = "Name",
+                 direction = "wide")
+
+# Optionally, create a nice table
+knitr::kable(sums2[order(sums2$Value, decreasing = TRUE), , drop = FALSE])
+
+```
+
+<br>
+
+With respect to Jupyter usage, most participants classified themselves as users of Jupyter, followed by the role of resource provider and representative/manager.
+
+```{r consotrium_role_process, echo =F}
+# Survey taker consortium role
+data$Q50_desc[data$Q50_desc == "User (single-person or, for example, teacher/trainer)"] <- "User"
+data$Q50_desc[data$Q50_desc == "Community or Research Alliance Representative / Consortium Manager"] <- "Representative/Manager"
+
+#table(data$Q50_desc, useNA = "always")
+#prop.table(table(data$Q50_desc, useNA = "always"))*100
+cons_role_frame <- as.data.frame(table(data$Q50_desc, useNA = "always"))
+
+# Optionally, create a nice table
+knitr::kable(cons_role_frame)
+```
+<br>
+
+---------------------------------------------------------------
+
+## Branch Results
+
+::: {.callout-important}
+Depending on their role for using Jupyter, the survey was branched with different participants answering different questions tailored to their roles. The following tabsets thus only describe the respective subsets of participants that were shown the questions correspdoning to their role.
+:::
+
+<style>
+/* ---- Tab Button Colors ---- */
+/* First tab: Blue */
+.panel-tabset .nav-tabs .nav-item:nth-child(1) .nav-link {
+  background-color: #cce7f9; /* inactive state */
+  color: #000;
+}
+.panel-tabset .nav-tabs .nav-item:nth-child(1) .nav-link.active {
+  background-color: #56B4E9; /* active state */
+  color: #fff;
+}
+
+/* Second tab: Orange */
+.panel-tabset .nav-tabs .nav-item:nth-child(2) .nav-link {
+  background-color: #ffe8c4;
+  color: #000;
+}
+.panel-tabset .nav-tabs .nav-item:nth-child(2) .nav-link.active {
+  background-color: #E69F00;
+  color: #fff;
+}
+
+/* Third tab: Green */
+.panel-tabset .nav-tabs .nav-item:nth-child(3) .nav-link {
+  background-color: #ccecd8;
+  color: #000;
+}
+.panel-tabset .nav-tabs .nav-item:nth-child(3) .nav-link.active {
+  background-color: #009E73;
+  color: #fff;
+}
+
+/* ---- Tab Content Background Colors ---- */
+/* Apply the lighter (inactive) color to the content area of each tab */
+.panel-tabset .tab-content .tab-pane:nth-child(1) {
+  background-color: #cce7f9;
+  padding: 1em;  /* Optional: add some padding for better readability */
+}
+.panel-tabset .tab-content .tab-pane:nth-child(2) {
+  background-color: #ffe8c4;
+  padding: 1em;
+}
+.panel-tabset .tab-content .tab-pane:nth-child(3) {
+  background-color: #ccecd8;
+  padding: 1em;
+}
+</style>
+
+
+::: {.panel-tabset}
+
+## Users / Other
+
+<br>
+Survey participants in the user role where predominantly using Jupyter whenever possible or specifically for workshops and training.
+<br>
+
+```{r, results='hide', message=FALSE, warning=FALSE,echo=F}
+invisible(capture.output({
+table(data$jupyter_purpose_coding_testing_tutorials,useNA = "always")
+prop.table(table(data$jupyter_purpose_coding_testing_tutorials,useNA = "always"))*100
+
+table(data$jupyter_purpose_heavy_computing_analysis,useNA = "always")
+prop.table(table(data$jupyter_purpose_heavy_computing_analysis,useNA = "always"))*100
+
+table(data$jupyter_purpose_whenever_possible,useNA = "always")
+prop.table(table(data$jupyter_purpose_whenever_possible,useNA = "always"))*100
+
+table(data$jupyter_purpose_workshops_training,useNA = "always")
+prop.table(table(data$jupyter_purpose_workshops_training,useNA = "always"))*100
+
+purpose_frame <- rbind.data.frame(table(data$jupyter_purpose_coding_testing_tutorials,useNA = "always"),
+                                   table(data$jupyter_purpose_heavy_computing_analysis,useNA = "always"),
+                                   table(data$jupyter_purpose_whenever_possible,useNA = "always"),
+                                   table(data$jupyter_purpose_workshops_training,useNA = "always"))
+
+
+purpose_frame <- cbind.data.frame(User = c("Testing and Tutorials","Heavy Computing and Analysis","Whenever possible","Workshops and Training"), purpose_frame)
+colnames(purpose_frame) <- c("Purpose","Yes","No","NA")
+
+purpose_frame_long <- tidyr::pivot_longer(
+  purpose_frame, 
+  cols = c(Yes, No, `NA`), 
+  names_to = "Response", 
+  values_to = "Count"
+)
+
+}))
+```
+<br>
+```{r,echo=F}
+DT::datatable(purpose_frame_long)
+```
+<br>
+```{r, fig.width = 15, fig.height = 12,echo=F}
+#| fig-align: center
+# Create the dodged bar graph
+ggplot(purpose_frame_long, aes(x = Purpose, y = Count, fill = Response)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    title = "Jupyter Purpose",
+    subtitles = question_info$question_text[26],
+    x = "Purpose",
+    y = "Count",
+    fill = "Response"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+
+Most of the participants in the user role were using Jupyter through Jupyterlite or through Google Colab.
+<br>
+```{r, results='hide', message=FALSE, warning=FALSE, echo=F}
+invisible(capture.output({
+# current jupyter use
+table(data$current_jupyter_use_local,useNA = "always")
+prop.table(table(data$current_jupyter_use_local,useNA = "always"))*100
+
+table(data$current_jupyter_use_remote,useNA = "always")
+prop.table(table(data$current_jupyter_use_remote,useNA = "always"))*100
+
+table(data$current_jupyter_use_jupyterlite,useNA = "always")
+prop.table(table(data$current_jupyter_use_jupyterlite,useNA = "always"))*100
+
+table(data$current_jupyter_use_colab,useNA = "always")
+prop.table(table(data$current_jupyter_use_colab,useNA = "always"))*100
+
+current_use_frame <- rbind.data.frame(table(data$current_jupyter_use_local,useNA = "always"),
+                                  table(data$current_jupyter_use_remote,useNA = "always"),
+                                  table(data$current_jupyter_use_jupyterlite,useNA = "always"),
+                                  table(data$current_jupyter_use_colab,useNA = "always"))
+
+
+current_use_frame <- cbind.data.frame(User = c("Local","Remote","Jupyterlite","Colab"), current_use_frame)
+colnames(current_use_frame) <- c("Current Use","Yes","No","NA")
+
+current_use_frame_long <- tidyr::pivot_longer(
+  current_use_frame, 
+  cols = c(Yes, No, `NA`), 
+  names_to = "Response", 
+  values_to = "Count"
+)
+
+}))
+```
+<br>
+```{r, echo=F}
+DT::datatable(current_use_frame_long)
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# Create the dodged bar graph
+ggplot(current_use_frame_long, aes(x = `Current Use`, y = Count, fill = Response)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    title = "Current Jupyter Use",
+    subtitle = question_info$question_text[27],
+    x = "Current Use",
+    y = "Count",
+    fill = "Response"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+<br>
+
+Participant in the user role using Jupyter through external providers were using a variety of different providers.
+<br>
+```{r, echo=F}
+# Jupyter Provider
+prov_frame <- data$jupyter_provider_who[!is.na(data$jupyter_provider_who)]
+prov_frame <- as.data.frame(prov_frame)
+colnames(prov_frame) <- NULL
+
+DT::datatable(prov_frame)
+```
+<br>
+
+For most participants in the user role, all asked for requirement are important:
+
+  - Concurrent Session Average
+  - Concurrent Session Peak
+  - User Number
+  - GPUs per Session
+  - CPUs per Session
+  - RAM per Session
+  - Persistent Storage per Session
+
+<br>
+```{r, results='hide', message=FALSE, warning=FALSE, echo=F}
+invisible(capture.output({
+# Resource Requirements
+table(data$resource_requirements_concurrenct_session_average,useNA = "always")
+prop.table(table(data$resource_requirements_concurrenct_session_average,useNA = "always"))*100
+
+table(data$resource_requirements_concurrent_session_peak,useNA = "always")
+prop.table(table(data$resource_requirements_concurrent_session_peak,useNA = "always"))*100
+
+table(data$resource_requirements_user_number,useNA = "always")
+prop.table(table(data$resource_requirements_user_number,useNA = "always"))*100
+
+table(data$resource_requirements_gpus_per_session,useNA = "always")
+prop.table(table(data$resource_requirements_gpus_per_session,useNA = "always"))*100
+
+table(data$resource_requirements_cpus_per_session,useNA = "always")
+prop.table(table(data$resource_requirements_cpus_per_session,useNA = "always"))*100
+
+table(data$resource_requirements_ram_per_session,useNA = "always")
+prop.table(table(data$resource_requirements_ram_per_session,useNA = "always"))*100
+
+table(data$resource_requirements_persistent_storage_per_session,useNA = "always")
+prop.table(table(data$resource_requirements_persistent_storage_per_session,useNA = "always"))*100
+
+requirements_frame <- rbind.data.frame(table(data$resource_requirements_concurrenct_session_average,useNA = "always"),
+                                      table(data$resource_requirements_concurrent_session_peak,useNA = "always"),
+                                      table(data$resource_requirements_user_number,useNA = "always"),
+                                      table(data$resource_requirements_gpus_per_session,useNA = "always"),
+                                      table(data$resource_requirements_cpus_per_session,useNA = "always"),
+                                      table(data$resource_requirements_ram_per_session,useNA = "always"),
+                                      table(data$resource_requirements_persistent_storage_per_session,useNA = "always"))
+
+
+requirements_frame <- cbind.data.frame(User = c("Concurrent Session Average","Concurrent Session Peak","User Number","GPUs per Session","CPUS per Session","RAM per Session","Persistent Storage per Session"), requirements_frame)
+colnames(requirements_frame) <- c("Requirement","Yes","No","NA")
+
+requirements_frame_long <- tidyr::pivot_longer(
+  requirements_frame, 
+  cols = c(Yes, No, `NA`), 
+  names_to = "Response", 
+  values_to = "Count"
+)
+
+
+}))
+```
+<br>
+```{r, echo=F}
+DT::datatable(requirements_frame_long)
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# Create the dodged bar graph
+ggplot(requirements_frame_long, aes(x = Requirement, y = Count, fill = Response)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    title = "Requirements",
+    subtitle = question_info$question_text[29],
+    x = "Requirement",
+    y = "Count",
+    fill = "Response"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+
+Similarly, all asked for environment requirement were important for most users:
+
+  - Lab extensions
+  - Software
+  - Licenses
+  - Custom Images
+  
+<br> 
+```{r, results='hide', message=FALSE, warning=FALSE, echo=F}
+invisible(capture.output({
+table(data$env_requirements_lab_extension,useNA = "always")
+prop.table(table(data$env_requirements_lab_extension,useNA = "always"))*100
+
+table(data$env_requirements_software,useNA = "always")
+prop.table(table(data$env_requirements_software,useNA = "always"))*100
+
+table(data$env_requirements_licenses,useNA = "always")
+prop.table(table(data$env_requirements_licenses,useNA = "always"))*100
+
+table(data$env_requirements_custom_images,useNA = "always")
+prop.table(table(data$env_requirements_custom_images,useNA = "always"))*100
+
+env_requirements_frame <- rbind.data.frame(table(data$env_requirements_lab_extension,useNA = "always"),
+                                       table(data$env_requirements_software,useNA = "always"),
+                                       table(data$env_requirements_licenses,useNA = "always"),
+                                       table(data$env_requirements_custom_images,useNA = "always"))
+
+
+env_requirements_frame <- cbind.data.frame(User = c("Lab Extension","Software","Licenses","Custom Images"), env_requirements_frame)
+colnames(env_requirements_frame) <- c("Env Requirement","Yes","No","NA")
+
+env_requirements_frame_long <- tidyr::pivot_longer(
+  env_requirements_frame, 
+  cols = c(Yes, No, `NA`), 
+  names_to = "Response", 
+  values_to = "Count"
+)
+
+
+
+}))
+```
+<br>
+```{r, echo=F}
+DT::datatable(env_requirements_frame_long)
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+#| 
+# Create the dodged bar graph
+ggplot(env_requirements_frame_long, aes(x = `Env Requirement`, y = Count, fill = Response)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    title = "Requirements",
+    subtitle = question_info$question_text[30],
+    x = "Requirement",
+    y = "Count",
+    fill = "Response"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+
+Most participants in the user role indicate to need write and read access to external data sources in the jupyter notebooks
+
+<br>
+```{r, echo=F}
+# External data access
+DT::datatable(data.frame(table(data$external_data_access,useNA = "always")))
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = external_data_access)) + 
+  geom_bar() +
+  labs(title = "External Data Access",
+       subtitle = question_info$question_text[32],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+```{r, echo=F}
+# write access
+DT::datatable(data.frame(table(data$write_access_to_shared_data,useNA = "always")))
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = write_access_to_shared_data)) + 
+  geom_bar() +
+  labs(title = "Access to shared Data",
+       subtitle = question_info$question_text[33],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+
+Among the users, the majority is not sure yet whether they want to offer software and services through jupyter in the future. Among those that do know, about half plan to do so while half plan not to do so.
+
+
+```{r, echo=F}
+# service offer through platform
+DT::datatable(data.frame(table(data$offer_software_service_through_platform,useNA = "always")))
+
+```
+
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = offer_software_service_through_platform)) + 
+  geom_bar() +
+  labs(title = "Offer Service through Software",
+       subtitle = question_info$question_text[35],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+Among Jupyter users in our sample, most have never head of binder
+<br>
+
+```{r, echo=F}
+# Knowing Binder
+DT::datatable(data.frame(table(data$know_binder,useNA="always")))
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = know_binder)) + 
+  geom_bar() +
+  labs(title = "Knowing Binder",
+       subtitle = question_info$question_text[37],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+<br>
+
+The majority of the sampled users indicates to need  reproducibility from Git or similar systems in their notebooks. Some users are still unsure and only very few outright say that they do not need these features.
+
+<br>
+
+```{r, echo = F}
+DT::datatable(data.frame(table(data$reproducibility_needed, useNA = "always")))
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo = F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = reproducibility_needed)) + 
+  geom_bar() +
+  labs(title = "Needed Reproducibility",
+       subtitle = question_info$question_text[38],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+<br>
+The majority of users in the sample indicate that they have never heard of jupyter lite but already use Google Colab.
+<br>
+```{r, echo=F}
+# knowing jupyterlite
+DT::datatable(data.frame(table(data$know_jupyterlite, useNA = "always")))
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = know_jupyterlite)) + 
+  geom_bar() +
+  labs(title = "Knowing Jupyterlite",
+       subtitle = question_info$question_text[39],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+```{r, echo=F}
+# knowing Colab
+DT::datatable(data.frame(table(data$know_colab, useNA = "always")))
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = know_colab)) + 
+  geom_bar() +
+  labs(title = "Knowing Colab",
+       subtitle = question_info$question_text[40],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+<br>
+
+With respect to other backends running on a JupyterHub proxy, most surveyed users are neither interested in in RStudio Server nor in VScode.
+<br>
+```{r, results='hide', echo=F}
+table(data$interest_in_other_service_vscode,useNA = "always")
+prop.table(table(data$interest_in_other_service_vscode,useNA = "always"))*100
+
+table(data$interest_in_other_service_rstudio,useNA = "always")
+prop.table(table(data$interest_in_other_service_rstudio,useNA = "always"))*100
+
+other_interest_frame <- rbind.data.frame(table(data$interest_in_other_service_vscode,useNA = "always"))
+                                           #table(data$interest_in_other_service_rstudio,useNA = "always"))
+
+
+other_interest_frame <- cbind.data.frame(Service = c("VScode","RStudio"), other_interest_frame)
+colnames(other_interest_frame) <- c("Service","Yes","No","NA")
+
+other_interest_frame_long <- tidyr::pivot_longer(
+  other_interest_frame, 
+  cols = c(Yes, No, `NA`), 
+  names_to = "Response", 
+  values_to = "Count"
+)
+
+```
+<br>
+```{r, echo=F}
+DT::datatable(other_interest_frame_long)
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# Create the dodged bar graph
+ggplot(other_interest_frame_long, aes(x = Service, y = Count, fill = Response)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    title = "Other services interest",
+    subtitle = question_info$question_text[43],
+    x = "Service",
+    y = "Count",
+    fill = "Response"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+<br>
+
+## Resource Providers
+
+<br>
+
+Participants in the resource provioder role were mostly not personally responsible for infrastructures and services
+
+<br>
+
+```{r, echo=F}
+#data$operation_management_responsibiltiy_in_consortium[!is.na(data$operation_management_responsibiltiy_in_consortium)]
+#table(data$operation_management_responsibiltiy_in_consortium,useNA = "always")
+#prop.table(table(data$operation_management_responsibiltiy_in_consortium,useNA = "always"))*100
+
+op_resp_frame <- as.data.frame(table(data$operation_management_responsibiltiy_in_consortium,useNA = "always"))
+
+# Optionally, create a nice table
+DT::datatable(op_resp_frame)
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+# stacked bar chart
+ggplot(data, aes(x = operation_management_responsibiltiy_in_consortium)) + 
+  geom_bar() +
+  labs(title = "Consortium Operation Management responsibility of survey respondents",
+       subtitle = question_info$question_text[8],
+       x = "Responsibility",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+<br>
+
+About 50% of participants in the resource provider role had their own IaaS cluster at their institutions.
+
+<br>
+
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+DT::datatable(data.frame(table(data$IaaS.cloud.cluster_yes, useNA = "always")))
+#prop.table(table(data$IaaS.cloud.cluster_yes, useNA = "always"))*100
+
+# stacked bar chart
+ggplot(data, aes(x = IaaS.cloud.cluster_yes)) + 
+  geom_bar() +
+  labs(title = "Iaas Cloud cluster with dedicated staff",
+       subtitle = question_info$question_text[9],
+       x = "answer",
+       y = "Count") +
+  theme_classic()
+
+
+```
+
+<br>
+
+Of those participants that do have their own IaaS cloud, most of them run them in a bare matal configuration or on Kubernetes.
+
+<br>
+
+```{r, results='hide', message=FALSE, warning=FALSE, echo = F}
+invisible(capture.output({
+cloud_cluster_frame <- data[,55:57]
+sapply(cloud_cluster_frame, class)
+for (i in 1:dim(cloud_cluster_frame)[2]) {
+  cloud_cluster_frame[,i] <- as.factor(cloud_cluster_frame[,i])
+}
+cloud_cluster_frame <- sapply(cloud_cluster_frame,as.numeric)
+cloud_cluster_frame <- (cloud_cluster_frame - 1)
+sums <- as.data.frame(colSums(cloud_cluster_frame, na.rm = TRUE))
+colnames(sums) <- "Value"
+sums$Name <- rownames(sums)
+
+}))
+```
+
+```{r, echo = F}
+row.names(sums) <- NULL
+DT::datatable(sums[,c(2,1)])
+
+```
+
+```{r, fig.width = 15, fig.height = 12, echo = F}
+#| fig-align: center
+
+# Create bar graph
+ggplot(sums, aes(x = reorder(Name, -Value), y = Value)) + 
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Bar Graph of Cloud Cluster Solution",
+    subtitle = question_info$question_text[10],
+    x = "Cloud Cluster",
+    y = "Mentioned in Survey"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+<br>
+
+Most participants in the resource provider role already operate a JupyterHub, following by not using a JupyterHub or similar service. Only two participants indicated to operate a similar service that is not JupyterHub.
+
+<br>
+
+```{r,echo=F}
+# table(data$use_jupyterhub_or_similar, useNA = "always")
+# prop.table(table(data$use_jupyterhub_or_similar, useNA = "always"))*100
+jupyter_hub_frame <- data.frame(table(data$use_jupyterhub_or_similar, useNA = "always"))
+DT::datatable(jupyter_hub_frame)
+```
+<br>
+```{r, fig.width = 15, fig.height = 12,echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = use_jupyterhub_or_similar)) + 
+  geom_bar() +
+  labs(title = "Using JupyterHub or similar service",
+       subtitle = question_info$question_text[11],
+       x = "answer",
+       y = "Count") +
+  theme_classic()
+
+```
+<br>
+
+For those participants that do operate a JupyterHub, only dew services are available publicly, most of them are in development or for internal use only
+<br>
+```{r, echo=F}
+# links
+#data$use_which_similar_link[!is.na(data$use_which_similar_link)]
+links <- rm_url(data$use_which_similar_link[!is.na(data$use_which_similar_link)], extract = T)
+links <- unlist(links)
+links <- links[!is.na(links)]
+link_frame <- as.data.frame(data$use_which_similar_link[!is.na(data$use_which_similar_link)])
+colnames(link_frame) <- NULL
+DT::datatable(link_frame)
+
+```
+<br>
+
+For those participants that do operate a JupyterHub, most use a KubeSpawner
+<br>
+
+```{r, echo=F}
+#table(data$spawner_use, useNA = "always")
+#prop.table(table(data$spawner_use, useNA = "always"))*100
+spawner_frame <- data.frame(table(data$spawner_use, useNA = "always"))
+DT::datatable(spawner_frame)
+```
+
+<br>
+
+For those participants in the resource provider role, none are willing to connect shared resources to the central JupyterHub for an unspecified group of users and only few are willing to share resources with a specific group of users. Most are not willing to connect shared resources to the central JupyterHub at all.
+
+<br>
+
+```{r, echo=F}
+# Willingness to connect own resources to central JupyterHub
+#table(data$spawner_use, useNA = "always")
+#prop.table(table(data$spawner_use, useNA = "always"))*100
+willingness_frame <- data.frame(table(data$willing_to_connect_resources_to_jupyterhub, useNA = "always"))
+colnames(willingness_frame) <- NULL
+DT::datatable(willingness_frame)
+
+```
+
+<br>
+
+For those participants that are willing to connect shared resources to the central JupyterHub for a specific group of users, all are willing for local users but only have are for NFDI-users or external users respectively
+
+<br>
+
+```{r, results='hide', message=FALSE, warning=FALSE, echo=F}
+invisible(capture.output({
+data$eligible_users_local  <- as.factor(data$eligible_users_local)
+data$eligible_users_local <- factor(data$eligible_users_local, levels = c(levels(data$eligible_users_local), "No"))
+table(data$eligible_users_local,useNA = "always")
+prop.table(table(data$eligible_users_local,useNA = "always"))*100
+
+table(data$eligible_users_NFDI,useNA = "always")
+prop.table(table(data$eligible_users_NFDI,useNA = "always"))*100
+
+table(data$eligible_users_external,useNA = "always")
+prop.table(table(data$eligible_users_external,useNA = "always"))*100
+
+eligible_frame <- rbind.data.frame(table(data$eligible_users_local,useNA = "always"),
+                                   table(data$eligible_users_NFDI,useNA = "always"),
+                                   table(data$eligible_users_external,useNA = "always"))
+eligible_frame <- cbind.data.frame(User = c("local","NFDI","external"),eligible_frame)
+colnames(eligible_frame) <- c("User","Yes","No","NA")
+
+eligible_frame_long <- tidyr::pivot_longer(
+  eligible_frame, 
+  cols = c(Yes, No, `NA`), 
+  names_to = "Response", 
+  values_to = "Count"
+)
+
+}))
+```
+<br>
+```{r, echo=F}
+DT::datatable(eligible_frame_long)
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+# Create the dodged bar graph
+ggplot(eligible_frame_long, aes(x = User, y = Count, fill = Response)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    title = "User Eligibility",
+    subtitle = question_info$question_text[16],
+    x = "User Type",
+    y = "Count",
+    fill = "Response"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+<br>
+
+For those participants willing to connect shared resources to the central JupyterHub for a specific group of users, only 50% at most would expect any benefits from doing so.
+
+<br>
+
+```{r, results='hide', message=FALSE, warning=FALSE, echo=F}
+invisible(capture.output({
+table(data$benefits_from_sharing_less_maintenance,useNA = "always")
+prop.table(table(data$benefits_from_sharing_less_maintenance,useNA = "always"))*100
+
+table(data$benefits_from_sharing_concentrate_on_hardware,useNA = "always")
+prop.table(table(data$benefits_from_sharing_concentrate_on_hardware,useNA = "always"))*100
+
+table(data$benefits_from_sharing_centrailized_AAI_and_user_mngmt,useNA = "always")
+prop.table(table(data$benefits_from_sharing_centrailized_AAI_and_user_mngmt,useNA = "always"))*100
+
+table(data$benefits_from_sharing_enhanced_visibility,useNA = "always")
+prop.table(table(data$benefits_from_sharing_enhanced_visibility,useNA = "always"))*100
+
+benefits_frame <- rbind.data.frame(table(data$benefits_from_sharing_less_maintenance,useNA = "always"),
+                                   table(data$benefits_from_sharing_concentrate_on_hardware,useNA = "always"),
+                                   table(data$benefits_from_sharing_centrailized_AAI_and_user_mngmt,useNA = "always"),
+                                   table(data$benefits_from_sharing_enhanced_visibility,useNA = "always"))
+
+
+benefits_frame <- cbind.data.frame(User = c("less_maintenance","focus_on_hardware","centrailized_AAI_user_mngmt","enhanced_visibility"), benefits_frame)
+colnames(benefits_frame) <- c("Benefit","Yes","No","NA")
+
+benefits_frame_long <- tidyr::pivot_longer(
+  benefits_frame, 
+  cols = c(Yes, No, `NA`), 
+  names_to = "Response", 
+  values_to = "Count"
+)
+
+}))
+```
+
+```{r,echo=F}
+DT::datatable(benefits_frame_long)
+
+```
+
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F,echo=F}
+#| fig-align: center
+# Create the dodged bar graph
+ggplot(benefits_frame_long, aes(x = Benefit, y = Count, fill = Response)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    title = "Expected Benefits",
+    subtitle = question_info$question_text[20],
+    x = "Benefit",
+    y = "Count",
+    fill = "Response"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+<br>
+
+## Representative/Manager
+
+<br>
+Of the participants in the role of representatives or managers, all already know Jupyter.
+<br>
+<br>
+
+```{r, echo=F}
+# knowing jupyter
+#data$know_jupyter[!is.na(data$know_jupyter)]
+#table(data$know_jupyter, useNA = "always")
+#prop.table(table(data$know_jupyter, useNA = "always"))*100#
+
+know_jup_frame <- data.frame(table(data$know_jupyter, useNA = "always"))
+DT::datatable(know_jup_frame)
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+# stacked bar chart
+ggplot(data, aes(x = know_jupyter)) + 
+  geom_bar() +
+  labs(title = "Knowing Jupyter",
+       subtitle = question_info$question_text[21],
+       x = "Answer",
+       y = "Count") +
+  theme_classic()
+
+
+```
+<br>
+
+The groups represented from participants in the role of representative or manager are relatively large (Mean = 44.71, Median = 30)
+
+<br>
+
+```{r, warning=F, message=FALSE, error=FALSE, echo=F}
+# group size
+data$group_size <- as.numeric(data$group_size)
+#fivenum(data$group_size)
+#summary(data$group_size)
+
+```
+<br>
+```{r, warning=F, fig.width = 15, fig.height = 12, message=FALSE, error=FALSE,echo=F}
+#| fig-align: center
+# plot
+ggplot(data, aes(x = "Violin", y = group_size)) +
+  geom_violin(aes(x = "Violin"), fill = "skyblue", color = "black", width = 0.7) + # Violin
+  geom_boxplot(aes(x = "Boxplot"), fill = "skyblue", color = "black", width = 0.5) + # Boxplot
+  labs(
+    title = "Violin Plot and Boxplot for Group size",
+    subtitle = question_info$question_text[22],
+    x = "",
+    y = "Group size"
+  ) +
+  stat_summary(
+    aes(x = "Violin"), fun = "mean", geom = "point", 
+    shape = 2, size = 3, color = "red"
+  ) +
+  stat_summary(
+    aes(x = "Boxplot"), fun = "mean", geom = "point", 
+    shape = 2, size = 3, color = "red"
+  ) +# Mean point for violin
+  theme_classic()
+
+```
+<br>
+
+Of the participants in the role of representative or manager, half already have a dedicated partner offering Jupyter Services.
+<br>
+
+```{r, echo=F}
+# dedicated partners
+#data$have_dedicated_partners
+dedicated_partner_frame <- data.frame(table(data$have_dedicated_partners,useNA = "always"))
+DT::datatable(dedicated_partner_frame)
+
+```
+<br>
+```{r, fig.width = 15, fig.height = 12, message=FALSE, error=FALSE,echo=F}
+#| fig-align: center
+# stacked bar chart
+ggplot(data, aes(x = have_dedicated_partners)) + 
+  geom_bar() +
+  labs(title = "Dedicated Partners",
+       subtitle = question_info$question_text[24],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic()
+
+```
+<br>
+
+:::
+
+---------------------------------------------------------------
+
+## Further Contact
+
+Most participants of the survey were interested in being contacted for further survey and in participanting in the user study.
+
+```{r, echo=F}
+# further contact
+#data$further_contact
+#table(data$further_contact,useNA = "always")
+#prop.table(table(data$further_contact,useNA = "always"))*100
+DT::datatable(data.frame(table(data$further_contact,useNA = "always")))
+```
+
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+# stacked bar chart
+ggplot(data, aes(x = further_contact)) + 
+  geom_bar() +
+  labs(title = "Further contact?",
+       subtitle = question_info$question_text[44],
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r, echo=F}
+# user study willingness
+#data$user_study_willingness
+#table(data$user_study_willingness,useNA = "always")
+#prop.table(table(data$user_study_willingness,useNA = "always"))*100
+DT::datatable(data.frame(table(data$user_study_willingness,useNA = "always")))
+
+```
+
+```{r, fig.width = 15, fig.height = 12, echo=F}
+#| fig-align: center
+
+#question_info$question_text[48]
+q_text2 <- "Would you be willing to participate in a user study? By participating in a user study?"
+
+# stacked bar chart
+ggplot(data, aes(x = user_study_willingness)) + 
+  geom_bar() +
+  labs(title = "User study willingness",
+       subtitle = q_text2,
+       x = "Survey Answer",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+---------------------------------------------------------------
+
+# Summary
+
+## Participants
+
+- In total, 75 people from 53 German research institutions participated in the user survey
+
+- survey participants came from `r length(unique(sums$Name))` different consortia but mostly from consortia with a focus on natural sciences and computational methods.
+
+- Participants institutions were mostly universities and research institutions all across Germany.
+
+- Within their respective consortia, participants fulfill various roles, but mostly management and leadership roles, followed by IT- and infrastructure development, and roles as researchers and scientists.
+
+- Interestingly, only about half of all participants already know Jupyter4NFDI, despite their backgrounds in quantitative research and computational methods and their membership in other NFDI consortia.
+
+- In terms of expectations, participants were mostly interested in easy access, a single entry point and training.
+
+- With respect to Jupyter usage, most participants classified themselves as users of Jupyter, followed by the role of resource provider and representative/manager.
+
+## Branch Results
+
+::: {.panel-tabset}
+
+
+### Users / Other
+
+- Survey participants in the user role where predominantly using Jupyter whenever possible or specifically for workshops and training.
+
+- Most of the participants in the user role were using Jupyter through Jupyterlite or through Google Colab.
+
+- Participant in the user role using Jupyter through external providers were using a variety of different providers.
+
+- For most participants in the user role, all asked for requirement are important:
+Concurrent Session Average, Concurrent Session Peak, User Number, GPUs per Session, CPUs per Session, RAM per Session, Persistent Storage per Session
+
+- Similarly, all asked for environment requirement were important for most users:
+Lab extensions, Software, Licenses, Custom Images
+  
+- Most participants in the user role indicate to need write and read access to external data sources in the jupyter notebooks
+
+- Among Jupyter users in our sample, most have never head of binder
+
+- The majority of the sampled users indicates to need  reproducibility from Git or similar systems in their notebooks. Some users are still unsure and only very few outright say that they do not need these features.
+
+- The majority of users in the sample indicate that they have never heard of jupyter lite but already use Google Colab.
+
+- With respect to other backends running on a JupyterHub proxy, most surveyed users are neither interested in in RStudio Server nor in VScode.
+
+### Resource Providers
+
+- Participants in the resource provider role were mostly not personally responsible for infrastructures and services
+
+- About 50% of participants in the resource provider role had their own IaaS cluster at their institutions.
+
+- Of those participants that do have their own IaaS cloud, most of them run them in a bare metal configuration or on Kubernetes.
+
+- Most participants in the resource provider role already operate a JupyterHub, following by not using a JupyterHub or similar service. Only two participants indicated to operate a similar service that is not JupyterHub.
+
+- For those participants that do operate a JupyterHub, only few services are available publicly, most of them are in development or for internal use only
+
+- For those participants that do operate a JupyterHub, most use a KubeSpawner
+
+- For those participants in the resource provider role, none are willing to connect shared resources to the central JupyterHub for an unspecified group of users and only few are willing to share resources with a specific group of users. Most are not willing to connect shared resources to the central JupyterHub at all.
+
+- For those participants that are willing to connect shared resources to the central JupyterHub for a specific group of users, all are willing for local users but only half are for NFDI-users or external users respectively
+
+- For those participants willing to connect shared resources to the central JupyterHub for a specific group of users, only 50% at most would expect any benefits from doing so.
+
+### Representative / Manager
+
+- Of the participants in the role of representatives or managers, all already know Jupyter.
+
+- The groups represented from participants in the role of representative or manager are relatively large (Mean = 44.71, Median = 30)
+
+- Of the participants in the role of representative or manager, half already have a dedicated partner offering Jupyter Services.
+
+:::
+
+----------------------------------------------------------------------------
+
+## Additional Information
+
+For any questions, feedback, or comments, please contact the Jupyter4NFDI consortium [here](mailto:jupyter4nfdi@lists.nfdi.de)
+
+To check out the detailed results, you can just click on the Binder button below. This will open
+an interactive Jupyter Notebook where you can explore the data in more detail. We have provided the code for you to run the descriptive
+analysis but you can also explore the data yourself!
+
+<a href="https://hub.nfdi-jupyter.de/r2d/gh/gesiscss/Jupyter4NFDI_survey_results" target="_blank">
+    <img src="https://nfdi-jupyter.de/images/nfdi_badge.svg" alt="Run Notebook">
+</a>
