@@ -8,6 +8,10 @@ the NFDI [here](https://www.nfdi.de/?lang=en) and about the Jupyter4NFDI consort
 
 In total, 75 people from 53 German research institutions participated in the user survey between Nov. 28th 2024 and Jan. 6th 2025.
 
+## Summary
+
+For a static summary of the survey results, you can click [here](https://gesiscss.github.io/Jupyter4NFDI_survey_results/Jupyter4NFDI%20Survey%20Summary.html).
+
 ## Detailed Results
 
 To check out the detailed results, you can just click on the Binder button below. This will open
