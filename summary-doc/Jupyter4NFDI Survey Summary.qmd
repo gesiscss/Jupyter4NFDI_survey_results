@@ -7,7 +7,7 @@ format:
     theme: flatly      
     toc: true          
     code-fold: true
-    standalone: true     
+    embed-resources: true
 execute:
   echo: false             
 ---
@@ -1430,7 +1430,7 @@ ggplot(data, aes(x = user_study_willingness)) +
 
 - In total, 75 people from 53 German research institutions participated in the user survey
 
-- survey participants came from `r length(unique(sums$Name))` different consortia but mostly from consortia with a focus on natural sciences and computational methods.
+- survey participants came from 23 different consortia but mostly from consortia with a focus on natural sciences and computational methods.
 
 - Participants institutions were mostly universities and research institutions all across Germany.
 
