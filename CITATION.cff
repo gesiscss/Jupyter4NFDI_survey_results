@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it as below."
+authors:
+  - name: "Jupyter4NFDI Consortium"
+    email: "jupyter4nfdi@lists.nfdi.de"
+    affiliation: "Jupyter4NFDI Consortium"
+title: "Jupyter4NFDI User Survey Results"
+version: "1.0.0"
+date-released: "2025-03-19"
+url: "https://github.com/gesiscss/Jupyter4NFDI_survey_results"
+repository-code: "https://github.com/gesiscss/Jupyter4NFDI_survey_results"
+license: "MIT"
+keywords:
+  - Jupyter
+  - NFDI
+  - Survey
+  - Descriptive Statistics
+  - Research Infrastructure
+description: "This repository provides descriptive statistics and initial analyses of the Jupyter4NFDI user survey conducted between Nov. 28th, 2024, and Jan. 6th, 2025."
+identifiers:
+  - type: "doi"
+    value: "10.5281/zenodo.1234567" # Replace with actual DOI if available
+funding:
+  - name: "Jupyter4NFDI in cooperation with NFDI4DS (DFG, project No. 460234259)"
+citation-style: "apa"
