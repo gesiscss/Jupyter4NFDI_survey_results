@@ -32,3 +32,7 @@ analysis but you can also explore the data yourself!
 ## Contact
 
 For any questions, feedback, or comments, please contact the Jupyter4NFDI consortium [here](mailto:jupyter4nfdi@lists.nfdi.de)
+
+---
+
+This work was funded by [Jupyter4NFDI](https://nfdi-jupyter.de) in cooperation with [NFDI4DS](https://www.nfdi4datascience.de) (DFG, project No. 460234259).
