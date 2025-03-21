@@ -19,7 +19,7 @@ keywords:
 description: "This repository provides descriptive statistics and initial analyses of the Jupyter4NFDI user survey conducted between Nov. 28th, 2024, and Jan. 6th, 2025."
 identifiers:
   - type: "doi"
-    value: "10.5281/zenodo.1234567" # Replace with actual DOI if available
+    value: "10.5281/zenodo.15064633"
 funding:
   - name: "Jupyter4NFDI in cooperation with NFDI4DS (DFG, project No. 460234259)"
 citation-style: "apa"
