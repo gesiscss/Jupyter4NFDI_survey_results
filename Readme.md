@@ -1,5 +1,11 @@
 # Jupyter4NFDI User Survey Results
 
+[![DOI](https://zenodo.org/badge/923105760.svg)](https://doi.org/10.5281/zenodo.15064633)
+
+-----------------------------
+
+## Overview 
+
 This Notebook showcases descriptive statistics and initial analyses of
 the user survey of the Jupyter4NFDI consortium. You can find more information about
 the NFDI [here](https://www.nfdi.de/?lang=en) and about the Jupyter4NFDI consortium [here](https://nfdi-jupyter.de/).
