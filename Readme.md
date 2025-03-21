@@ -1,6 +1,4 @@
-# Jupyter4NFDI User Survey Results
-
-[![DOI](https://zenodo.org/badge/923105760.svg)](https://doi.org/10.5281/zenodo.15064633)
+# Jupyter4NFDI User Survey Results [![DOI](https://zenodo.org/badge/923105760.svg)](https://doi.org/10.5281/zenodo.15064633)
 
 -----------------------------
 
