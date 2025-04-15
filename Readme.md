@@ -20,16 +20,9 @@ To check out the detailed results, you can just click on the Binder button below
 an interactive Jupyter Notebook where you can explore the data in more detail. We have provided the code for you to run the descriptive
 analysis but you can also explore the data yourself!
 
-**Click to import the project into Jupyter4NFDI:**
-
-<a href="https://hub.nfdi-jupyter.de/r2d/gh/gesiscss/Jupyter4NFDI_survey_results/HEAD?labpath=Final_Processed_Survey_analysis_notebook.ipynb" target="_blank">
+<a href="https://hub.nfdi-jupyter.de/v2/gh/gesiscss/Jupyter4NFDI_survey_results/HEAD" target="_blank">
     <img src="https://nfdi-jupyter.de/images/nfdi_badge.svg" alt="Run Notebook">
 </a>
-
-
-**Click  to launch the project on MyBinder:**
-
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/gesiscss/Jupyter4NFDI_survey_results/HEAD?labpath=Final_Processed_Survey_analysis_notebook.ipynb)
 
 
 ## Licensing
